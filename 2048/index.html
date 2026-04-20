@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>2048 (Vanilla JS)</title>
+  <style>
+    :root {
+      --bg:#0f172a; --panel:#111827; --line:#374151; --text:#e5e7eb;
+      --empty:#0b1220; --tile:#243244; --accent:#22c55e;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text);
+      min-height:100vh; display:grid; place-items:center;
+      font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    }
+    .wrap { width:min(520px,96vw); }
+    h1 { margin: 0 0 12px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+    .stats { display:flex; gap:14px; font-size:.95rem; opacity:.9; }
+    .btn { border-radius:10px; padding:10px 14px; font-weight:700; border:1px solid var(--line); background:#0b1220; color:var(--text); cursor:pointer; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    .btn:hover { background:#10182a; }
+    #board { display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;
+      border:1px solid var(--line); border-radius:14px; padding:10px; background: #0b1220; touch-action:none; }
+    .cell {
+      aspect-ratio:1/1; border-radius:10px; display:grid; place-items:center;
+      font-weight:800; font-size:28px;
+      background: var(--empty); color:#e5e7eb; user-select:none;
+      transition: transform .08s ease;
+    }
+    .cell.pop { transform: scale(1.06); }
+    .tile-0  { background: var(--empty); color: transparent; }
+    .tile-2  { background:#1f2937; }
+    .tile-4  { background:#243244; }
+    .tile-8  { background:#f59e0b; color:#0b1220; }
+    .tile-16 { background:#f97316; color:#0b1220; }
+    .tile-32 { background:#ef4444; color:#0b1220; }
+    .tile-64 { background:#dc2626; color:#0b1220; }
+    .tile-128{ background:#a78bfa; color:#0b1220; }
+    .tile-256{ background:#8b5cf6; color:#0b1220; }
+    .tile-512{ background:#6366f1; color:#0b1220; }
+    .tile-1024{background:#22c55e; color:#0b1220; }
+    .tile-2048{background:#16a34a; color:#0b1220; }
+    footer { opacity:.7; font-size:.85rem; margin-top:8px; text-align:center; }
+    noscript { display:block; margin:12px 0; background:#3b1111; border:1px solid #7f1d1d; padding:8px 10px; border-radius:8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🧩 2048 (JS)</h1>
+    <div class="card">
+      <noscript>JavaScript is disabled; the game can’t run.</noscript>
+
+      <div class="row">
+        <div>
+          <strong id="status">Use Arrow Keys or Swipe</strong>
+          <div class="stats">
+            <div>Score: <span id="score">0</span></div>
+            <div>Best: <span id="best">0</span></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="undo"  class="btn" disabled>↶ Undo</button>
+          <button id="new"   class="btn">↺ New Game</button>
+        </div>
+      </div>
+
+      <div id="board" aria-label="2048 board" role="grid"></div>
+
+      <footer>W/A/S/D also work • Combine tiles to reach <b>2048</b></footer>
+    </div>
+  </div>
+
+  <script>
+  // show any fatal error in the UI
+  const showError = (e) => { const s = document.getElementById('status'); if (s) s.textContent = 'Error: ' + (e?.message||e); console.error(e); };
+
+  try {
+    // ====== UI refs ======
+    const boardEl = document.getElementById('board');
+    const scoreEl = document.getElementById('score');
+    const bestEl  = document.getElementById('best');
+    const statusEl= document.getElementById('status');
+    const undoBtn = document.getElementById('undo');
+    const newBtn  = document.getElementById('new');
+
+    // ====== localStorage (safe) ======
+    const BEST_KEY = 'g_2048_best_v1';
+    let storageOK = true;
+    try { localStorage.setItem('__2048_test', '1'); localStorage.removeItem('__2048_test'); } catch(_) { storageOK = false; }
+    const getBest = () => storageOK ? Number(localStorage.getItem(BEST_KEY) || 0) : Number(bestEl.textContent||0);
+    const setBest = (v) => { if (storageOK) { try { localStorage.setItem(BEST_KEY, String(v)); } catch(_){} } bestEl.textContent = v; };
+    setBest(getBest());
+
+    // ====== Game state ======
+    const SIZE = 4;
+    let grid;          // 2D array [row][col]
+    let score;
+    let won, over;
+    let prevState = null; // for undo {grid, score}
+
+    // Build board cells once
+    const cells = [];
+    for (let i=0;i<SIZE*SIZE;i++){
+      const div = document.createElement('div');
+      div.className = 'cell tile-0';
+      div.setAttribute('role','gridcell');
+      boardEl.appendChild(div);
+      cells.push(div);
+    }
+
+    function setStatus(t){ statusEl.textContent = t; }
+    function cloneGrid(g){ return g.map(r => r.slice()); }
+
+    function emptyGrid(){ return Array.from({length: SIZE}, ()=> Array(SIZE).fill(0)); }
+
+    function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    function getEmptyCells(g){
+      const out = [];
+      for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) if (g[r][c]===0) out.push([r,c]);
+      return out;
+    }
+
+    function addRandomTile(g){
+      const empties = getEmptyCells(g);
+      if (empties.length === 0) return false;
+      const [r,c] = randChoice(empties);
+      g[r][c] = Math.random() < 0.9 ? 2 : 4;
+      // pop effect on render
+      const idx = r*SIZE + c; requestAnimationFrame(()=>{ cells[idx].classList.add('pop'); setTimeout(()=>cells[idx].classList.remove('pop'), 90); });
+      return true;
+    }
+
+    function init(){
+      grid = emptyGrid();
+      score = 0; won=false; over=false; prevState=null;
+      addRandomTile(grid); addRandomTile(grid);
+      updateUI();
+      setStatus('Use Arrow Keys or Swipe');
+      undoBtn.disabled = true;
+    }
+
+    // ====== Movement & merging ======
+    function slideRowLeft(row){
+      const nums = row.filter(v => v!==0);
+      const merged = [];
+      for (let i=0; i<nums.length; ){
+        if (i+1 < nums.length && nums[i] === nums[i+1]) {
+          const v = nums[i]*2;
+          merged.push(v);
+          score += v;
+          i += 2;
+        } else {
+          merged.push(nums[i]);
+          i += 1;
+        }
+      }
+      while (merged.length < SIZE) merged.push(0);
+      return merged;
+    }
+
+    function rotateGridRight(g){
+      // returns g rotated 90° CW
+      const out = emptyGrid();
+      for (let r=0;r<SIZE;r++)
+        for (let c=0;c<SIZE;c++)
+          out[c][SIZE-1-r] = g[r][c];
+      return out;
+    }
+    function rotateGridLeft(g){
+      const out = emptyGrid();
+      for (let r=0;r<SIZE;r++)
+        for (let c=0;c<SIZE;c++)
+          out[SIZE-1-c][r] = g[r][c];
+      return out;
+    }
+    function gridsEqual(a,b){
+      for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) if (a[r][c]!==b[r][c]) return false;
+      return true;
+    }
+
+    // dir: 'left'|'right'|'up'|'down'
+    function move(dir){
+      if (over) return false;
+
+      const before = cloneGrid(grid);
+      let work = cloneGrid(grid);
+
+      if (dir==='up') work = rotateGridLeft(work);
+      if (dir==='right') work = work.map(row=>row.slice().reverse());
+      if (dir==='down') work = rotateGridRight(work);
+
+      // slide each row left
+      work = work.map(slideRowLeft);
+
+      // un-rotate / un-reverse
+      if (dir==='right') work = work.map(row=>row.slice().reverse());
+      if (dir==='up') work = rotateGridRight(work);
+      if (dir==='down') work = rotateGridLeft(work);
+
+      if (gridsEqual(before, work)) return false; // no change -> ignore
+
+      // save for undo
+      prevState = { grid: before, score: score };
+      undoBtn.disabled = false;
+
+      grid = work;
+      addRandomTile(grid);
+      checkGameState();
+      updateUI();
+      return true;
+    }
+
+    function checkGameState(){
+      // win?
+      for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) if (grid[r][c] >= 2048) won = true;
+      if (won) setStatus('You made 2048! Keep going or New Game');
+
+      // moves available?
+      if (getEmptyCells(grid).length>0) return;
+      // any adjacent equals?
+      for (let r=0;r<SIZE;r++){
+        for (let c=0;c<SIZE;c++){
+          const v = grid[r][c];
+          if (r+1<SIZE && grid[r+1][c]===v) return;
+          if (c+1<SIZE && grid[r][c+1]===v) return;
+        }
+      }
+      over = true;
+      setStatus('Game Over — ↺ New Game');
+    }
+
+    // ====== Render ======
+    function updateUI(){
+      // numbers
+      for (let r=0;r<SIZE;r++){
+        for (let c=0;c<SIZE;c++){
+          const v = grid[r][c];
+          const el = cells[r*SIZE + c];
+          el.textContent = v===0 ? '' : String(v);
+          el.className = 'cell tile-' + (v===0 ? '0' : v);
+        }
+      }
+      scoreEl.textContent = score;
+      setBest(Math.max(getBest(), score));
+    }
+
+    // ====== Input ======
+    function handleKey(e){
+      const k = e.key.toLowerCase();
+      const nav = ["arrowleft","arrowright","arrowup","arrowdown","w","a","s","d"].includes(k);
+      if (!nav) return;
+
+      e.preventDefault();
+      if (k==="arrowleft" || k==="a") move('left');
+      else if (k==="arrowright" || k==="d") move('right');
+      else if (k==="arrowup" || k==="w") move('up');
+      else if (k==="arrowdown" || k==="s") move('down');
+    }
+    window.addEventListener('keydown', handleKey);
+
+    // swipe (mobile)
+    let touchStart=null;
+    boardEl.addEventListener('touchstart', (e)=>{
+      if (e.touches?.length) touchStart = {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    }, {passive:true});
+    boardEl.addEventListener('touchend', (e)=>{
+      if (!touchStart) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStart.x;
+      const dy = t.clientY - touchStart.y;
+      touchStart = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; // ignore tiny drags
+      if (Math.abs(dx) > Math.abs(dy)) move(dx>0?'right':'left');
+      else move(dy>0?'down':'up');
+    }, {passive:true});
+
+    // buttons
+    newBtn.addEventListener('click', init);
+    undoBtn.addEventListener('click', ()=>{
+      if (!prevState) return;
+      grid = cloneGrid(prevState.grid);
+      score = prevState.score;
+      prevState = null;
+      undoBtn.disabled = true;
+      over=false; // allow continue after undo
+      setStatus('Use Arrow Keys or Swipe');
+      updateUI();
+    });
+
+    // boot
+    init();
+  } catch (e){ showError(e); }
+  </script>
+</body>
+</html>

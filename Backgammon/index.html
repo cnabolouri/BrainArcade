@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Backgammon (Vanilla JS)</title>
+<style>
+  :root { --bg:#0f172a; --panel:#111827; --line:#374151; --text:#e5e7eb;
+          --ptA:#0e253e; --ptB:#17324f; --white:#e5e7eb; --black:#34d399;
+          --hl:#22c55e; --accent:#22c55e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); min-height:100vh; display:grid; place-items:center;
+         font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+  .wrap { width:min(980px,96vw); }
+  h1 { margin:0 0 12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .btn { border-radius:10px; padding:10px 14px; font-weight:700; border:1px solid var(--line); background:#0b1220; color:var(--text); cursor:pointer; }
+  .btn:disabled { opacity:.6; cursor:not-allowed; }
+  .btn:hover { background:#10182a; }
+  #game { display:block; border-radius:12px; border:1px solid var(--line); background:#0b1220; touch-action:none; }
+  .stats { display:flex; gap:14px; font-size:.95rem; opacity:.9; }
+  footer { opacity:.7; font-size:.85rem; margin-top:8px; text-align:center; }
+  .pill { padding:4px 8px; border:1px solid var(--line); border-radius:999px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🎲 Backgammon (JS)</h1>
+    <div class="card">
+      <div class="row">
+        <div>
+          <strong id="status">White to roll</strong>
+          <div class="stats">
+            <div>Dice: <span id="dice">–</span></div>
+            <div class="pill">Bar: W <span id="barW">0</span> • B <span id="barB">0</span></div>
+            <div class="pill">Off: W <span id="offW">0</span> • B <span id="offB">0</span></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="roll" class="btn">🎲 Roll</button>
+          <button id="end"  class="btn" disabled>➡ End Turn</button>
+          <button id="undo" class="btn" disabled>↶ Undo</button>
+          <button id="reset" class="btn">↺ Reset</button>
+        </div>
+      </div>
+      <canvas id="game" width="940" height="560" aria-label="Backgammon board" role="img"></canvas>
+      <footer>Click a checker (or the bar) ➜ green targets light up ➜ click a target to move.  
+      Doubles = 4 moves. You must use a die if a legal move exists. Bearing off auto-checks rules.</footer>
+    </div>
+  </div>
+
+<script>
+const showError = e => { const s=document.getElementById('status'); if(s) s.textContent='Error: '+(e?.message||e); console.error(e); };
+
+try {
+// ===== Layout / Canvas =====
+const W=940,H=560, M=18, BAR_W=46, RIM=12, PIP_W = Math.floor((W - 2*M - BAR_W)/12);
+const MID_Y = H/2;
+const CHECK_R = 16, STACK_SP=22;
+const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+
+// ===== UI refs =====
+const statusEl = document.getElementById('status');
+const diceEl   = document.getElementById('dice');
+const barWEl   = document.getElementById('barW');
+const barBEl   = document.getElementById('barB');
+const offWEl   = document.getElementById('offW');
+const offBEl   = document.getElementById('offB');
+const rollBtn  = document.getElementById('roll');
+const endBtn   = document.getElementById('end');
+const undoBtn  = document.getElementById('undo');
+const resetBtn = document.getElementById('reset');
+
+// ===== Model =====
+let points, bar, off, turn, dice, movesLeft, selected=null, targets=[];
+let history=[];         // for one-step undo
+let gameOver=false;
+
+function declareWinner(winner){
+  gameOver = true;
+  setStatus(`${nameOf(winner)} wins! 🏆`);
+  dice=[]; movesLeft=[]; selected=null; targets=[];
+  rollBtn.disabled = true; endBtn.disabled = true; undoBtn.disabled = true;
+  draw();
+}
+
+resetGame();
+
+function resetGame(){
+  points = Array(26).fill(null);
+  // Starting positions
+  setPoint(24,'W',2); setPoint(13,'W',5); setPoint(8,'W',3); setPoint(6,'W',5);
+  setPoint(1,'B',2);  setPoint(12,'B',5); setPoint(17,'B',3); setPoint(19,'B',5);
+  bar = {W:0,B:0};
+  off = {W:0,B:0};
+  turn='W'; dice=[]; movesLeft=[];
+  selected=null; targets=[]; history=[];
+  gameOver=false;
+  rollBtn.disabled=false; endBtn.disabled=true; undoBtn.disabled=true;
+  updateHUD(); setStatus(`${nameOf(turn)} to roll`);
+  draw();
+}
+
+function setPoint(i,c,n){ points[i]={c,n}; }
+function nameOf(p){ return p==='W'?'White':'Black'; }
+function dirOf(p){ return p==='W' ? -1 : +1; }
+function homeRange(p){ return p==='W' ? [1,6] : [19,24]; }
+function entryPoint(p,die){ return p==='W' ? 25-die : die; }
+
+function cloneState(){
+  return {
+    points: points.map(p=>p?{c:p.c,n:p.n}:null),
+    bar:{...bar}, off:{...off}, turn, dice:[...dice], movesLeft:[...movesLeft],
+    selected, targets: JSON.parse(JSON.stringify(targets))
+  };
+}
+function restoreState(s){
+  points = s.points.map(p=>p?{c:p.c,n:p.n}:null);
+  bar={...s.bar}; off={...s.off}; turn=s.turn;
+  dice=[...s.dice]; movesLeft=[...s.movesLeft]; selected=s.selected; targets=s.targets;
+  updateHUD(); draw();
+}
+
+// ===== Dice / Turn flow =====
+rollBtn.addEventListener('click', rollDice);
+endBtn.addEventListener('click', endTurn);
+undoBtn.addEventListener('click', ()=>{
+  if (gameOver || !history.length) return;
+  restoreState(history.pop());
+  undoBtn.disabled = history.length===0;
+  setStatus(`${nameOf(turn)}: continue`);
+});
+resetBtn.addEventListener('click', resetGame);
+
+function rollDice(){
+  // Block re-rolling within the same turn
+  if (gameOver || dice.length) return;
+
+  const d1 = 1 + Math.floor(Math.random()*6);
+  const d2 = 1 + Math.floor(Math.random()*6);
+  dice = [d1,d2];
+  movesLeft = (d1===d2)? [d1,d1,d1,d1] : [d1,d2];
+  diceEl.textContent = d1 + ' & ' + d2 + (d1===d2?' (double)':'');
+
+  // After you roll, you cannot roll again this turn
+  rollBtn.disabled = true;
+
+  selected=null; targets=[];
+
+  if(!hasAnyLegalMove()){
+    setStatus(`${nameOf(turn)} rolled ${d1}-${d2} and has no legal move — click End Turn`);
+    endBtn.disabled = false;          // allow passing the turn
+  } else {
+    setStatus(`${nameOf(turn)} to move`);
+    endBtn.disabled = true;           // must play moves first
+  }
+  draw();
+}
+
+
+function endTurn(){
+  if (gameOver) return;
+
+  // You can only end if no dice left or no legal move
+  if (movesLeft.length && hasAnyLegalMove()){
+    setStatus(`You must use all dice if you can.`);
+    return;
+  }
+
+  // Next player
+  turn = (turn==='W') ? 'B' : 'W';
+  dice = []; movesLeft = []; selected = null; targets = [];
+  undoBtn.disabled = true;
+
+  // New player must roll; can't end before rolling
+  rollBtn.disabled = false;           // 🔓 enable Roll for the next player
+  endBtn.disabled  = true;            // ⛔ until they roll
+
+  updateHUD();
+  setStatus(`${nameOf(turn)} to roll`);
+  draw();
+}
+
+
+function updateHUD(){
+  barWEl.textContent = bar.W; barBEl.textContent = bar.B;
+  offWEl.textContent = off.W; offBEl.textContent = off.B;
+  diceEl.textContent = dice.length ? (dice[0] + ' & ' + dice[1] + (dice[0]===dice[1]?' (double)':'')) : '–';
+}
+
+// ===== Rules helpers =====
+function ownerAt(i){ return points[i]?.c || null; }
+function countAt(i){ return points[i]?.n || 0; }
+function isOpenFor(i,player){
+  const c = ownerAt(i), n = countAt(i);
+  return (n===0) || (c===player) || (c!==player && n===1);
+}
+function allInHome(player){
+  const [a,b] = homeRange(player);
+  let total = off[player];
+  for (let i=a;i<=b;i++) if (ownerAt(i)===player) total += countAt(i);
+  return (bar[player]===0) && (total===15);
+}
+function highestOccupiedHome(player){
+  const [a,b] = homeRange(player);
+  if (player==='W'){
+    for (let i=b;i>=a;i--) if (ownerAt(i)===player && countAt(i)>0) return i;
+  } else {
+    for (let i=a;i<=b;i++) if (ownerAt(i)===player && countAt(i)>0) return i;
+  }
+  return null;
+}
+function canBearOffFrom(p,die,player){
+  if (!allInHome(player)) return false;
+  if (player==='W'){
+    const dest = p - die;
+    if (dest===0) return true;
+    if (dest<0){ return highestOccupiedHome('W')===p; }
+    return false;
+  } else {
+    const dest = p + die;
+    if (dest===25) return true;
+    if (dest>25){ return highestOccupiedHome('B')===p; }
+    return false;
+  }
+}
+
+function hasAnyLegalMove(){
+  const player = turn;
+  const uniq = [...new Set(movesLeft)];
+  if (bar[player]>0){
+    for (const d of uniq){ const ep = entryPoint(player,d); if (isOpenFor(ep,player)) return true; }
+    return false;
+  }
+  for (let i=1;i<=24;i++){
+    if (ownerAt(i)!==player) continue;
+    for (const d of uniq){
+      const dest = i + dirOf(player)*d;
+      if (dest>=1 && dest<=24){
+        if (isOpenFor(dest,player)) return true;
+      } else if (canBearOffFrom(i,d,player)) return true;
+    }
+  }
+  return false;
+}
+
+// ===== Move generation =====
+function legalTargetsFrom(from){
+  const player = turn, outs=[], uniq=[...new Set(movesLeft)];
+  if (bar[player]>0 && from!=='bar') return outs;
+  if (from==='bar'){
+    for (const d of uniq){ const ep=entryPoint(player,d); if (isOpenFor(ep,player)) outs.push({to:ep,die:d,type:'enter'}); }
+    return outs;
+  }
+  if (ownerAt(from)!==player) return outs;
+  for (const d of uniq){
+    const dest = from + dirOf(player)*d;
+    if (dest>=1 && dest<=24){
+      if (isOpenFor(dest,player)) outs.push({to:dest,die:d,type:'move'});
+    } else if (canBearOffFrom(from,d,player)){
+      outs.push({to:(player==='W'?0:25),die:d,type:'bearoff'});
+    }
+  }
+  return outs;
+}
+
+// ===== Apply a move =====
+function useDie(v){ const i=movesLeft.indexOf(v); if (i>=0) movesLeft.splice(i,1); }
+
+function applyMove(from, target){
+  history.push(cloneState()); undoBtn.disabled=false;
+
+  const player = turn;
+  useDie(target.die);
+
+  if (target.type==='enter'){
+    bar[player]--; landOn(target.to,player);
+  } else if (target.type==='move'){
+    takeFrom(from); landOn(target.to,player);
+  } else if (target.type==='bearoff'){
+    takeFrom(from); off[player]++;
+    if (off[player] >= 15){ updateHUD(); declareWinner(player); return; }
+  }
+
+  selected=null; targets=[]; updateHUD();
+
+  if (!movesLeft.length || !hasAnyLegalMove()){
+    endBtn.disabled=false;
+    setStatus(!movesLeft.length ? `${nameOf(player)} used all dice — end turn`
+                                : `${nameOf(player)} is blocked — end turn`);
+  } else {
+    endBtn.disabled=true; setStatus(`${nameOf(player)}: continue`);
+  }
+}
+
+function takeFrom(i){
+  if (!points[i] || points[i].n===0) return;
+  points[i].n--; if (points[i].n===0) points[i]=null;
+}
+function landOn(i,player){
+  const c=ownerAt(i), n=countAt(i);
+  if (n===0) setPoint(i,player,1);
+  else if (c===player) points[i].n++;
+  else if (n===1){ points[i]={c:player,n:1}; bar[c]++; }
+}
+
+// ===== Click handling =====
+canvas.addEventListener('click', onClick);
+function onClick(e){
+  if (gameOver) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  if (!movesLeft.length){ setStatus(`Roll first.`); return; }
+
+  const hit = hitTest(x,y);
+
+  // deselect if clicking same source again
+  if (hit?.kind==='point' && selected===hit.point){ selected=null; targets=[]; draw(); return; }
+  if (hit?.kind==='bar' && selected==='bar'){ selected=null; targets=[]; draw(); return; }
+
+  // execute if clicking a legal target
+  if (hit?.kind==='point' || hit?.kind==='off'){
+    const t = targets.find(t => (hit.kind==='point' ? t.to===hit.point : t.type==='bearoff'));
+    if (t && selected){ applyMove(selected,t); draw(); return; }
+  }
+
+  // choose source
+  if (hit?.kind==='bar'){
+    if (bar[turn]===0){ setStatus(`No ${nameOf(turn)} checkers on bar.`); return; }
+    selected='bar'; targets=legalTargetsFrom('bar'); draw(); return;
+  }
+  if (hit?.kind==='point'){
+    if (ownerAt(hit.point)!==turn){ setStatus(`That point isn’t yours.`); return; }
+    if (bar[turn]>0){ setStatus(`${nameOf(turn)} must enter from the bar.`); selected=null; targets=[]; draw(); return; }
+    selected=hit.point; targets=legalTargetsFrom(hit.point); draw(); return;
+  }
+  // else clear
+  selected=null; targets=[]; draw();
+}
+
+// ===== Hit testing =====
+function hitTest(x,y){
+  // Board columns first (so 24 & 1 are clickable), then off bins.
+  const left0=M, left1=M+6*PIP_W;
+  const right0=left1+BAR_W, right1=right0+6*PIP_W;
+
+  let col=-1;
+  if (x>=left0 && x<left1) col = Math.floor((x-left0)/PIP_W);
+  else if (x>=right0 && x<right1) col = Math.floor((x-right0)/PIP_W)+6;
+
+  if (col!==-1){
+    const topRow = (y<MID_Y);
+    const point = topRow ? (13+col) : (12-col);
+    return {kind:'point', point};
+  }
+
+  // Bar strip
+  const barX0 = M + 6*PIP_W, barX1 = barX0 + BAR_W;
+  if (x>=barX0 && x<=barX1) return {kind:'bar', who: (y<MID_Y?'B':'W')};
+
+  // Off bins (right edge) — after triangles to avoid overlap
+  const offX0 = right1 + RIM;
+  if (x>=offX0) return {kind:'off', who: (y<MID_Y?'B':'W')};
+
+  return null;
+}
+
+// ===== Drawing =====
+function setStatus(t){ statusEl.textContent=t; }
+function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function drawBoard(){
+  ctx.fillStyle="#0b1220"; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="rgba(255,255,255,.2)"; ctx.strokeRect(M,M,W-2*M,H-2*M);
+
+  // mid bar
+  const barX = M + 6*PIP_W;
+  ctx.fillStyle="rgba(255,255,255,.06)";
+  ctx.fillRect(barX, M, BAR_W, H-2*M);
+
+  // triangles
+  for (let i=0;i<12;i++){
+    const xL = M + i*PIP_W + (i>=6?BAR_W:0);
+    drawTriangle(xL, M,    PIP_W, (H-2*M)/2 - RIM, i%2===0?getVar('--ptA'):getVar('--ptB'), true);
+    drawTriangle(xL, H-M,  PIP_W, (H-2*M)/2 - RIM, i%2===0?getVar('--ptB'):getVar('--ptA'), false);
+  }
+
+  // off bins (match hit test)
+  const right1 = (M + 6*PIP_W) + BAR_W + 6*PIP_W;
+  const offX0  = right1 + RIM;
+  ctx.fillStyle="rgba(255,255,255,.06)";
+  ctx.fillRect(offX0, M, 40, (H-2*M)/2 - RIM);
+  ctx.fillRect(offX0, MID_Y + RIM, 40, (H-2*M)/2 - RIM);
+
+  // labels
+  ctx.fillStyle="rgba(255,255,255,.4)";
+  ctx.font="12px system-ui,-apple-system,Segoe UI,Roboto,Arial";
+  ctx.fillText("(B)", W - M - 22, M + 14);
+  ctx.fillText("(W)", W - M - 22, MID_Y + RIM + 14);
+
+  // tiny indices
+  ctx.fillStyle="rgba(255,255,255,.22)";
+  for (let i=0;i<12;i++){
+    const topPt = 13+i, botPt = 12-i;
+    const x = M + i*PIP_W + (i>=6?BAR_W:0) + PIP_W/2;
+    ctx.fillText(String(topPt), x-6, M+12);
+    ctx.fillText(String(botPt), x-6, H - M - 4);
+  }
+}
+
+function drawTriangle(x,y,w,h,downColor,down=true){
+  ctx.fillStyle=downColor; ctx.beginPath();
+  if (down){ ctx.moveTo(x,y); ctx.lineTo(x+w,y); ctx.lineTo(x+w/2,y+h); }
+  else     { ctx.moveTo(x,y); ctx.lineTo(x+w,y); ctx.lineTo(x+w/2,y-h); }
+  ctx.closePath(); ctx.fill();
+}
+
+function drawCheckers(){
+  for (let i=1;i<=24;i++){
+    const p=points[i]; if(!p) continue;
+    const {x,y,down} = pointAnchor(i);
+    const color = (p.c==='W')?getVar('--white'):getVar('--black');
+    const n=p.n;
+    const drawOne = (yy)=>chip(x,yy,color,(selected===i));
+    if (n<=5){
+      for (let k=0;k<n;k++){ const yy = down? (y + k*STACK_SP + CHECK_R) : (y - k*STACK_SP - CHECK_R); drawOne(yy); }
+    } else {
+      for (let k=0;k<5;k++){ const yy = down? (y + k*STACK_SP + CHECK_R) : (y - k*STACK_SP - CHECK_R); drawOne(yy); }
+      const yy = down? (y + 5*STACK_SP + CHECK_R) : (y - 5*STACK_SP - CHECK_R);
+      chip(x, yy, color, (selected===i), n);
+    }
+  }
+  // bar stacks
+  const barX = M + 6*PIP_W + BAR_W/2;
+  for (let i=0;i<bar.B;i++) chip(barX, MID_Y - 6 - i*STACK_SP - CHECK_R, getVar('--black'), selected==='bar' && turn==='B');
+  for (let i=0;i<bar.W;i++) chip(barX, MID_Y + 6 + i*STACK_SP + CHECK_R, getVar('--white'), selected==='bar' && turn==='W');
+
+  // targets
+  for (const t of targets){
+    if (t.type==='bearoff'){
+      const offY = (turn==='W') ? (MID_Y + RIM + 30) : (M + 30);
+      const offX = W - M - 20;
+      ctx.strokeStyle=getVar('--hl'); ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(offX, offY, 12, 0, Math.PI*2); ctx.stroke(); ctx.lineWidth=1;
+    } else {
+      const A = pointAnchor(t.to);
+      const yy = A.down ? (A.y + CHECK_R) : (A.y - CHECK_R);
+      ctx.strokeStyle=getVar('--hl'); ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(A.x, yy, 14, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle=getVar('--hl'); ctx.font="bold 12px system-ui";
+      ctx.fillText(String(t.die), A.x-4, yy+4); ctx.lineWidth=1;
+    }
+  }
+}
+
+function chip(x,y,color,selected=false,countLabel=null){
+  ctx.fillStyle=color; ctx.beginPath(); ctx.arc(x,y,CHECK_R,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.stroke();
+  if (selected){ ctx.strokeStyle=getVar('--accent'); ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,CHECK_R+2,0,Math.PI*2); ctx.stroke(); ctx.lineWidth=1; }
+  if (countLabel){ ctx.fillStyle="#0b1220"; ctx.font="bold 12px system-ui"; ctx.fillText(String(countLabel), x-4, y+4); }
+}
+
+function pointAnchor(i){
+  let col, top;
+  if (i>=13){ col=i-13; top=true; } else { col=12-i; top=false; }
+  const x = M + (col>=6?BAR_W:0) + col*PIP_W + PIP_W/2;
+  if (top) return {x, y:M+4, down:true};
+  return {x, y:H-M-4, down:false};
+}
+
+function draw(){
+  drawBoard(); drawCheckers();
+  ctx.fillStyle="rgba(255,255,255,.85)"; ctx.font="bold 14px system-ui";
+  ctx.fillText(`${nameOf(turn)} ${movesLeft.length?'to move':'to roll'}`, M+6, MID_Y-6);
+  if (dice.length){ ctx.font="bold 16px system-ui"; ctx.fillText(`Moves left: ${movesLeft.join(' ')}`, M+6, MID_Y+16); }
+}
+
+// ===== Helpers =====
+function refreshTargets(){ targets = (selected===null)? [] : legalTargetsFrom(selected); }
+
+// keep window.selected in sync (optional debugging trick & used by clicks)
+Object.defineProperty(window,'selected',{ set(v){ selected=v; refreshTargets(); draw(); }, get(){ return selected; } });
+
+} catch(e){ showError(e); }
+</script>
+</body>
+</html>

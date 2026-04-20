@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Parking Jam (Vanilla JS)</title>
+<style>
+  :root {
+    --bg:#0f172a; --panel:#111827; --line:#374151; --text:#e5e7eb;
+    --board:#0b1220; --grid:#1f2937; --exit:#22c55e;
+    --car1:#93c5fd; --car2:#a7f3d0; --car3:#fbbf24; --car4:#f472b6; --car5:#c4b5fd; --car6:#fca5a5;
+    --target:#ef4444; --highlight:#22c55e; --ghost:rgba(255,255,255,.1);
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    min-height:100vh; display:grid; place-items:center;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  }
+  .wrap { width:min(760px,96vw); }
+  h1 { margin:0 0 12px; }
+  .card {
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .btn {
+    border-radius:10px; padding:10px 14px; font-weight:700;
+    border:1px solid var(--line); background:#0b1220; color:var(--text); cursor:pointer;
+  }
+  .btn:disabled { opacity:.6; cursor:not-allowed; }
+  .btn:hover { background:#10182a; }
+  .stats { display:flex; gap:14px; font-size:.95rem; opacity:.9; flex-wrap:wrap; }
+  #game { display:block; border-radius:12px; border:1px solid var(--line); background:var(--board); touch-action:none; }
+  footer { opacity:.7; font-size:.85rem; margin-top:8px; text-align:center; }
+  .pill { padding:4px 8px; border:1px solid var(--line); border-radius:999px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🚗 Parking Jam (JS)</h1>
+    <div class="card">
+      <div class="row">
+        <div>
+          <strong id="status">Level 1 — Drag cars to free the red car →</strong>
+          <div class="stats">
+            <div>Moves: <span id="moves">0</span></div>
+            <div>Best: <span id="best">–</span></div>
+            <div class="pill">Level: <span id="lvl">1</span>/<span id="lvltotal">1</span></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="prev" class="btn">⟨ Prev</button>
+          <button id="next" class="btn">Next ⟩</button>
+          <button id="rand" class="btn">🎲 Random</button>
+          <button id="undo" class="btn" disabled>↶ Undo</button>
+          <button id="reset" class="btn">↺ Reset</button>
+        </div>
+      </div>
+
+      <canvas id="game" width="600" height="600" aria-label="Parking Jam" role="img"></canvas>
+
+      <footer>Drag a car in its allowed direction (H ↔ or V ↕). Get the <b style="color:#ef4444">red car</b> to the right edge (green exit) to win.</footer>
+    </div>
+  </div>
+
+<script>
+const showError = e => { const s=document.getElementById('status'); if(s) s.textContent='Error: '+(e?.message||e); console.error(e); };
+
+try {
+// ====== CONFIG ======
+const GRID = 6;
+const CELL = 90;                   // pixels per grid cell (fits 6×6 in 600px)
+const PADDING = 30;                // inner board padding in canvas
+const WIDTH = 600, HEIGHT = 600;
+const EXIT_ROW = 2;                // row index (0-based) where the red car exits to the RIGHT
+const DPR = window.devicePixelRatio || 1;
+
+// ====== CANVAS ======
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.style.width = WIDTH + 'px';
+canvas.style.height = HEIGHT + 'px';
+canvas.width = WIDTH * DPR;
+canvas.height = HEIGHT * DPR;
+ctx.scale(DPR, DPR);
+
+// ====== UI ======
+const statusEl = document.getElementById('status');
+const movesEl  = document.getElementById('moves');
+const bestEl   = document.getElementById('best');
+const lvlEl    = document.getElementById('lvl');
+const totalEl  = document.getElementById('lvltotal');
+const prevBtn  = document.getElementById('prev');
+const nextBtn  = document.getElementById('next');
+const randBtn  = document.getElementById('rand');
+const undoBtn  = document.getElementById('undo');
+const resetBtn = document.getElementById('reset');
+
+// ====== LEVELS ======
+// Each car: {x,y,len,dir:'H'|'V', target?:true, color?}
+// Coordinates are 0-based grid cells. Target is horizontal, must reach right edge in EXIT_ROW.
+const LEVELS = [
+  // L1 – easy opener
+  [
+    {x:1,y:2,len:2,dir:'H',target:true},
+    {x:0,y:0,len:3,dir:'H',color:'var(--car1)'},
+    {x:3,y:0,len:2,dir:'V',color:'var(--car2)'},
+    {x:5,y:0,len:3,dir:'V',color:'var(--car3)'},
+    {x:0,y:3,len:3,dir:'V',color:'var(--car4)'},
+    {x:0,y:4,len:2,dir:'H',color:'var(--car5)'},
+    {x:3,y:5,len:2,dir:'H',color:'var(--car6)'},
+  ],
+  // L2 – classic block
+  [
+    {x:0,y:2,len:2,dir:'H',target:true},
+    {x:2,y:2,len:3,dir:'V',color:'var(--car2)'},
+    {x:4,y:0,len:3,dir:'V',color:'var(--car3)'},
+    {x:1,y:0,len:2,dir:'H',color:'var(--car4)'},
+    {x:0,y:4,len:3,dir:'H',color:'var(--car5)'},
+    {x:3,y:4,len:2,dir:'H',color:'var(--car6)'},
+    {x:1,y:5,len:2,dir:'H',color:'var(--car1)'},
+  ],
+  // L3 – tighter
+  [
+    {x:1,y:2,len:2,dir:'H',target:true},
+    {x:3,y:1,len:3,dir:'V',color:'var(--car2)'},
+    {x:4,y:2,len:2,dir:'V',color:'var(--car3)'},
+    {x:0,y:0,len:2,dir:'H',color:'var(--car4)'},
+    {x:0,y:3,len:2,dir:'H',color:'var(--car5)'},
+    {x:2,y:4,len:3,dir:'H',color:'var(--car6)'},
+    {x:5,y:3,len:3,dir:'V',color:'var(--car1)'},
+  ],
+  // L4 – trickier
+  [
+    {x:2,y:2,len:2,dir:'H',target:true},
+    {x:0,y:1,len:3,dir:'V',color:'var(--car2)'},
+    {x:1,y:4,len:2,dir:'V',color:'var(--car3)'},
+    {x:3,y:0,len:2,dir:'H',color:'var(--car4)'},
+    {x:3,y:3,len:3,dir:'V',color:'var(--car5)'},
+    {x:4,y:4,len:2,dir:'H',color:'var(--car6)'},
+    {x:5,y:0,len:3,dir:'V',color:'var(--car1)'},
+  ],
+  // L5 – denser
+  [
+    {x:1,y:2,len:2,dir:'H',target:true},
+    {x:0,y:0,len:3,dir:'V',color:'var(--car1)'},
+    {x:2,y:0,len:2,dir:'H',color:'var(--car2)'},
+    {x:4,y:0,len:2,dir:'H',color:'var(--car3)'},
+    {x:3,y:3,len:2,dir:'V',color:'var(--car4)'},
+    {x:0,y:5,len:3,dir:'H',color:'var(--car5)'},
+    {x:5,y:2,len:3,dir:'V',color:'var(--car6)'},
+    {x:1,y:4,len:2,dir:'H',color:'var(--car2)'},
+  ]
+];
+totalEl.textContent = LEVELS.length;
+
+// ====== STATE ======
+let levelIndex = 0;
+let cars = [];              // array of cars for current level (mutated positions)
+let targetIndex = 0;        // index of red car
+let moves = 0;
+let bestCacheOK = true;
+let history = [];           // stack of previous car arrays (for undo)
+let dragging = null;        // {i, startX, startY, baseX, baseY, min, max}
+let won = false;
+
+const BEST_KEY_PREFIX = 'parkingjam-best-v1-';
+
+// robust localStorage
+try { localStorage.setItem('__pj_test','1'); localStorage.removeItem('__pj_test'); }
+catch(_) { bestCacheOK = false; }
+const getBest = (lvl) => {
+  if (!bestCacheOK) return null;
+  const v = localStorage.getItem(BEST_KEY_PREFIX + lvl);
+  const n = v==null ? null : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+const setBest = (lvl, n) => {
+  if (!bestCacheOK) return;
+  try { localStorage.setItem(BEST_KEY_PREFIX + lvl, String(n)); } catch(_) {}
+};
+
+// ====== LEVEL LOAD / RESET / UNDO ======
+function loadLevel(idx){
+  levelIndex = (idx + LEVELS.length) % LEVELS.length;
+  const base = LEVELS[levelIndex];
+  cars = base.map((c, i) => ({
+    x:c.x, y:c.y, len:c.len, dir:c.dir, target:!!c.target,
+    color: c.target ? 'var(--target)' : (c.color || pickColor(i))
+  }));
+  targetIndex = cars.findIndex(c => c.target);
+  moves = 0; history = []; won = false;
+  lvlEl.textContent = levelIndex+1;
+  movesEl.textContent = moves;
+  updateBestLabel();
+  setStatus(`Level ${levelIndex+1} — free the red car →`);
+  undoBtn.disabled = true;
+  draw();
+}
+
+function resetLevel(){
+  loadLevel(levelIndex);
+}
+
+function undo(){
+  if (!history.length || won) return;
+  const prev = history.pop();
+  cars = prev.cars.map(c => ({...c}));
+  moves = prev.moves;
+  dragging = null;
+  movesEl.textContent = moves;
+  setStatus(`Undo ✓`);
+  undoBtn.disabled = history.length===0;
+  draw();
+}
+
+function saveSnapshot(){
+  history.push({ cars: cars.map(c=>({...c})), moves });
+  undoBtn.disabled = false;
+}
+
+function updateBestLabel(){
+  const b = getBest(levelIndex);
+  bestEl.textContent = b==null ? '–' : String(b);
+}
+
+function setStatus(t){ statusEl.textContent = t; }
+
+// ====== INPUT (mouse/touch drag) ======
+function toBoardXY(px, py){
+  const bx = (px - (WIDTH - GRID*CELL)/2) / CELL;
+  const by = (py - (HEIGHT - GRID*CELL)/2) / CELL;
+  return { bx, by };
+}
+function cellRect(cx, cy){ // pixel rect for a cell
+  const x0 = (WIDTH - GRID*CELL)/2 + cx*CELL;
+  const y0 = (HEIGHT - GRID*CELL)/2 + cy*CELL;
+  return {x:x0, y:y0, w:CELL, h:CELL};
+}
+
+function carAtPixel(px, py){
+  const {bx, by} = toBoardXY(px, py);
+  const x = Math.floor(bx), y = Math.floor(by);
+  if (x<0||y<0||x>=GRID||y>=GRID) return -1;
+  return cars.findIndex(c => {
+    if (c.dir === 'H') return y===c.y && x>=c.x && x<c.x+c.len;
+    else               return x===c.x && y>=c.y && y<c.y+c.len;
+  });
+}
+
+function buildOccGrid(excludeIndex){
+  const g = Array.from({length:GRID}, () => Array(GRID).fill(-1));
+  for (let i=0;i<cars.length;i++){
+    if (i===excludeIndex) continue;
+    const c = cars[i];
+    if (c.dir==='H'){
+      for (let dx=0; dx<c.len; dx++) g[c.y][c.x+dx] = i;
+    } else {
+      for (let dy=0; dy<c.len; dy++) g[c.y+dy][c.x] = i;
+    }
+  }
+  return g;
+}
+
+function computeLimits(i){
+  const c = cars[i];
+  const occ = buildOccGrid(i);
+  if (c.dir==='H'){
+    let minX = c.x, maxX = c.x;
+    // left
+    while (minX-1>=0 && occ[c.y][minX-1]===-1) minX--;
+    // right
+    while (maxX + c.len <= GRID-1 && occ[c.y][maxX + c.len]===-1) maxX++;
+    return {min:minX, max:maxX};
+  } else { // V
+    let minY = c.y, maxY = c.y;
+    while (minY-1>=0 && occ[minY-1][c.x]===-1) minY--;
+    while (maxY + c.len <= GRID-1 && occ[maxY + c.len][c.x]===-1) maxY++;
+    return {min:minY, max:maxY};
+  }
+}
+
+function pointerDown(px, py){
+  if (won) return;
+  const i = carAtPixel(px, py);
+  if (i<0) return;
+  const c = cars[i];
+  const lim = computeLimits(i);
+  dragging = {
+    i,
+    startX: px, startY: py,
+    baseX: c.x, baseY: c.y,
+    min: lim.min, max: lim.max
+  };
+}
+
+function pointerMove(px, py){
+  if (!dragging || won) return;
+  const c = cars[dragging.i];
+  if (c.dir==='H'){
+    const delta = (px - dragging.startX) / CELL;
+    let want = Math.round(dragging.baseX + delta);
+    want = Math.max(dragging.min, Math.min(dragging.max, want));
+    if (want !== c.x) { c.x = want; draw(); }
+  } else {
+    const delta = (py - dragging.startY) / CELL;
+    let want = Math.round(dragging.baseY + delta);
+    want = Math.max(dragging.min, Math.min(dragging.max, want));
+    if (want !== c.y) { c.y = want; draw(); }
+  }
+}
+
+function pointerUp(){
+  if (!dragging || won) return;
+  const i = dragging.i;
+  const c = cars[i];
+  const moved = (c.x !== dragging.baseX) || (c.y !== dragging.baseY);
+  dragging = null;
+  if (moved){
+    saveSnapshot();
+    moves += 1;
+    movesEl.textContent = moves;
+    // Win check: target reaches right edge
+    const t = cars[targetIndex];
+    if (t.y === EXIT_ROW && (t.x + t.len === GRID)){
+      won = true;
+      const bestPrev = getBest(levelIndex);
+      if (bestPrev == null || moves < bestPrev) { setBest(levelIndex, moves); }
+      updateBestLabel();
+      setStatus(`🎉 Cleared in ${moves} moves! Press Next or Random for another.`);
+      undoBtn.disabled = true;
+    } else {
+      setStatus(`Moves: ${moves}`);
+    }
+    draw();
+  }
+}
+
+// Mouse
+canvas.addEventListener('mousedown', e => {
+  const rect=canvas.getBoundingClientRect();
+  pointerDown(e.clientX-rect.left, e.clientY-rect.top);
+});
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const rect=canvas.getBoundingClientRect();
+  pointerMove(e.clientX-rect.left, e.clientY-rect.top);
+});
+window.addEventListener('mouseup', ()=> pointerUp());
+
+// Touch
+canvas.addEventListener('touchstart', e => {
+  const t=e.touches[0]; const r=canvas.getBoundingClientRect();
+  pointerDown(t.clientX-r.left, t.clientY-r.top);
+}, {passive:true});
+canvas.addEventListener('touchmove', e => {
+  if (!dragging) return;
+  const t=e.touches[0]; const r=canvas.getBoundingClientRect();
+  pointerMove(t.clientX-r.left, t.clientY-r.top);
+}, {passive:true});
+canvas.addEventListener('touchend', ()=> pointerUp(), {passive:true});
+
+// Buttons
+prevBtn.addEventListener('click', ()=> loadLevel(levelIndex-1));
+nextBtn.addEventListener('click', ()=> loadLevel(levelIndex+1));
+randBtn.addEventListener('click', ()=> loadLevel(Math.floor(Math.random()*LEVELS.length)));
+undoBtn.addEventListener('click', undo);
+resetBtn.addEventListener('click', resetLevel);
+
+// ====== DRAW ======
+function drawBoard(){
+  // board background
+  ctx.fillStyle = getVar('--board');
+  ctx.fillRect(0,0,WIDTH,HEIGHT);
+
+  const x0 = (WIDTH - GRID*CELL)/2;
+  const y0 = (HEIGHT - GRID*CELL)/2;
+
+  // grid
+  ctx.strokeStyle = getVar('--grid');
+  for (let i=0;i<=GRID;i++){
+    ctx.beginPath(); ctx.moveTo(x0+i*CELL, y0); ctx.lineTo(x0+i*CELL, y0+GRID*CELL); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x0, y0+i*CELL); ctx.lineTo(x0+GRID*CELL, y0+i*CELL); ctx.stroke();
+  }
+
+  // exit highlight on the right edge at EXIT_ROW
+  const exitX = x0 + GRID*CELL;
+  const exitY = y0 + EXIT_ROW*CELL;
+  ctx.fillStyle = getVar('--exit');
+  ctx.fillRect(exitX-6, exitY+CELL*0.2, 6, CELL*0.6);
+  // arrow
+  ctx.beginPath();
+  ctx.moveTo(exitX-6, exitY+CELL*0.5);
+  ctx.lineTo(exitX+16, exitY+CELL*0.5);
+  ctx.lineTo(exitX+8,  exitY+CELL*0.5 - 8);
+  ctx.moveTo(exitX+16, exitY+CELL*0.5);
+  ctx.lineTo(exitX+8,  exitY+CELL*0.5 + 8);
+  ctx.strokeStyle = getVar('--exit'); ctx.lineWidth=2; ctx.stroke();
+  ctx.lineWidth=1;
+}
+
+function drawCars(){
+  const x0 = (WIDTH - GRID*CELL)/2;
+  const y0 = (HEIGHT - GRID*CELL)/2;
+
+  // highlight drag axis limits (ghost path)
+  if (dragging){
+    const c = cars[dragging.i];
+    ctx.fillStyle = getVar('--ghost');
+    if (c.dir==='H'){
+      const y = y0 + c.y*CELL;
+      const leftX  = x0 + dragging.min*CELL;
+      const rightX = x0 + (dragging.max + c.len)*CELL;
+      ctx.fillRect(leftX, y+CELL*0.12, rightX-leftX, CELL*0.76);
+    } else {
+      const x = x0 + c.x*CELL;
+      const topY = y0 + dragging.min*CELL;
+      const botY = y0 + (dragging.max + c.len)*CELL;
+      ctx.fillRect(x+CELL*0.12, topY, CELL*0.76, botY-topY);
+    }
+  }
+
+  for (let i=0;i<cars.length;i++){
+    const c = cars[i];
+    const px = x0 + c.x*CELL;
+    const py = y0 + c.y*CELL;
+    const w = (c.dir==='H') ? (c.len*CELL) : CELL;
+    const h = (c.dir==='V') ? (c.len*CELL) : CELL;
+    const rad = 14;
+
+    ctx.fillStyle = c.color;
+    roundRect(px+6, py+6, w-12, h-12, rad, true);
+
+    // draw stripes to show orientation
+    ctx.strokeStyle = 'rgba(0,0,0,.25)';
+    ctx.lineWidth = 2;
+    if (c.dir==='H'){
+      ctx.beginPath();
+      ctx.moveTo(px + w*0.33, py+10); ctx.lineTo(px + w*0.33, py+h-10);
+      ctx.moveTo(px + w*0.66, py+10); ctx.lineTo(px + w*0.66, py+h-10);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(px+10, py + h*0.33); ctx.lineTo(px+w-10, py + h*0.33);
+      ctx.moveTo(px+10, py + h*0.66); ctx.lineTo(px+w-10, py + h*0.66);
+      ctx.stroke();
+    }
+
+    // special border for target
+    if (c.target){
+      ctx.strokeStyle = 'rgba(255,255,255,.7)';
+      ctx.lineWidth = 3;
+      roundRect(px+6, py+6, w-12, h-12, rad, false);
+      ctx.lineWidth = 1;
+    }
+  }
+}
+
+function draw(){
+  drawBoard();
+  drawCars();
+  // overlay win
+  if (won){
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.fillRect(0,0,WIDTH,HEIGHT);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+    ctx.textAlign='center';
+    ctx.fillText('Level cleared! 🎉', WIDTH/2, HEIGHT/2 - 8);
+    ctx.font = '16px system-ui,-apple-system,Segoe UI,Roboto,Arial';
+    ctx.fillText('Use Next or Random for another puzzle.', WIDTH/2, HEIGHT/2 + 18);
+    ctx.textAlign='start';
+  }
+}
+
+function roundRect(x,y,w,h,r,fill=true){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  if (fill) ctx.fill(); else ctx.stroke();
+}
+
+function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function pickColor(i){
+  const palette = ['var(--car1)','var(--car2)','var(--car3)','var(--car4)','var(--car5)','var(--car6)'];
+  return palette[i % palette.length];
+}
+
+// boot
+loadLevel(0);
+
+} catch(e){ showError(e); }
+</script>
+</body>
+</html>

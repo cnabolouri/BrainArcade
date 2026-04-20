@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tic-Tac-Toe (Vanilla JS)</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --line:#374151; --accent:#22c55e; --text:#e5e7eb; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      display: grid; place-items: center; min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    }
+    .wrap { width: min(420px, 92vw); }
+    h1 { margin: 0 0 12px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .row { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    #status { font-weight: 700; }
+    .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .cell {
+      height: 100px; font-size: 48px; font-weight: 800;
+      border-radius: 12px; border: 1px solid var(--line);
+      background: #0b1220; color: var(--text); cursor: pointer;
+      transition: transform .05s ease, background .15s ease;
+    }
+    .cell:hover:not(:disabled) { transform: translateY(-2px); }
+    .cell:disabled { opacity: .85; cursor: not-allowed; }
+    .btn {
+      border-radius: 10px; padding: 10px 14px; font-weight: 700;
+      border: 1px solid var(--line); background: #0b1220; color: var(--text);
+      cursor: pointer;
+    }
+    .btn:hover { background: #10182a; }
+    .win { outline: 3px solid var(--accent); }
+    footer { opacity: .7; font-size: .85rem; text-align: center; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🎮 Tic-Tac-Toe (JS)</h1>
+
+    <div class="card" role="group" aria-label="Tic-Tac-Toe game">
+      <div class="row">
+        <div id="status" role="status" aria-live="polite">Loading…</div>
+        <button id="reset" class="btn" type="button">New Game</button>
+      </div>
+
+      <div id="board" class="board">
+        <!-- 9 buttons; JS reads data-index -->
+        <button class="cell" data-index="0" aria-label="Cell 1" type="button"></button>
+        <button class="cell" data-index="1" aria-label="Cell 2" type="button"></button>
+        <button class="cell" data-index="2" aria-label="Cell 3" type="button"></button>
+        <button class="cell" data-index="3" aria-label="Cell 4" type="button"></button>
+        <button class="cell" data-index="4" aria-label="Cell 5" type="button"></button>
+        <button class="cell" data-index="5" aria-label="Cell 6" type="button"></button>
+        <button class="cell" data-index="6" aria-label="Cell 7" type="button"></button>
+        <button class="cell" data-index="7" aria-label="Cell 8" type="button"></button>
+        <button class="cell" data-index="8" aria-label="Cell 9" type="button"></button>
+      </div>
+    </div>
+
+    <footer>No frameworks. Just HTML, CSS, and JavaScript.</footer>
+  </div>
+
+  <script>
+    // ---------- State ----------
+    let board = Array(9).fill(""); // "", "X", or "O"
+    let current = "X";
+    let gameOver = false;
+
+    const wins = [
+      [0,1,2],[3,4,5],[6,7,8], // rows
+      [0,3,6],[1,4,7],[2,5,8], // cols
+      [0,4,8],[2,4,6]          // diagonals
+    ];
+
+    // ---------- DOM ----------
+    const cells = Array.from(document.querySelectorAll(".cell"));
+    const statusEl = document.getElementById("status");
+    const resetBtn = document.getElementById("reset");
+
+    function setStatus(text){ statusEl.textContent = text; }
+
+    function clearHighlights() {
+      cells.forEach(c => c.classList.remove("win"));
+    }
+
+    function render(){
+      cells.forEach((btn, i) => {
+        btn.textContent = board[i];
+        btn.disabled = board[i] !== "" || gameOver;
+      });
+    }
+
+    function checkWinner(){
+      for (const [a,b,c] of wins) {
+        if (board[a] && board[a] === board[b] && board[b] === board[c]) {
+          [a,b,c].forEach(i => cells[i].classList.add("win"));
+          return board[a]; // "X" or "O"
+        }
+      }
+      if (board.every(v => v)) return "draw";
+      return null;
+    }
+
+    function makeMove(i){
+      if (gameOver || board[i]) return;
+
+      board[i] = current;
+      const result = checkWinner();
+
+      if (result === "draw") {
+        gameOver = true;
+        setStatus("It's a draw! ▶ New Game");
+      } else if (result === "X" || result === "O") {
+        gameOver = true;
+        setStatus(`${result} wins! 🎉 ▶ New Game`);
+      } else {
+        current = current === "X" ? "O" : "X";
+        setStatus(`${current}'s turn`);
+      }
+      render();
+    }
+
+    function onCellClick(e){
+      const i = Number(e.currentTarget.dataset.index);
+      makeMove(i);
+    }
+
+    function resetGame(){
+      board = Array(9).fill("");
+      current = "X";
+      gameOver = false;
+      clearHighlights();
+      setStatus("X's turn");
+      render();
+    }
+
+    // ---------- Wire up ----------
+    cells.forEach(btn => btn.addEventListener("click", onCellClick));
+    resetBtn.addEventListener("click", resetGame);
+
+    // first paint
+    resetGame();
+  </script>
+</body>
+</html>
