@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BrainArcade • Tic-Tac-Toe</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="../assets/brainarcade-favicon.png"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="brand">
+        <a href="../index.html" class="logo-link">
+          <img
+            src="../assets/brainarcade-logo.png"
+            alt="BrainArcade logo"
+            class="site-logo"
+          />
+        </a>
+        <div>
+          <h1>Tic-Tac-Toe</h1>
+          <p>Classic strategy, quick rounds, and clean competition.</p>
+        </div>
+      </div>
+
+      <nav class="top-nav">
+        <a href="../index.html" class="nav-link">Home</a>
+        <a href="../jeopardy/index.html" class="nav-link">Jeopardy</a>
+        <a href="../2048/index.html" class="nav-link">2048</a>
+        <a href="../tetris/index.html" class="nav-link">Tetris</a>
+      </nav>
+    </header>
+
+    <main class="game-shell">
+      <section class="topbar">
+        <div class="stat-card">
+          <span class="stat-label">X Wins</span>
+          <span class="stat-value" id="x-score">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">O Wins</span>
+          <span class="stat-value" id="o-score">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Draws</span>
+          <span class="stat-value" id="draw-score">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Mode</span>
+          <span class="stat-value small" id="mode-label">2 Players</span>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <section class="board-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Match Arena</h2>
+              <p>Choose a mode, then place your mark.</p>
+            </div>
+
+            <div class="panel-actions">
+              <select id="mode-select" class="select-control">
+                <option value="pvp">2 Players</option>
+                <option value="cpu">Vs CPU</option>
+              </select>
+              <button id="reset" class="primary-btn" type="button">
+                New Round
+              </button>
+              <button id="reset-all" class="secondary-btn" type="button">
+                Reset Scores
+              </button>
+            </div>
+          </div>
+
+          <div class="status-bar" id="status" role="status" aria-live="polite">
+            Loading…
+          </div>
+
+          <div
+            id="board"
+            class="board"
+            role="group"
+            aria-label="Tic-Tac-Toe board"
+          >
+            <button
+              class="cell"
+              data-index="0"
+              aria-label="Cell 1"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="1"
+              aria-label="Cell 2"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="2"
+              aria-label="Cell 3"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="3"
+              aria-label="Cell 4"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="4"
+              aria-label="Cell 5"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="5"
+              aria-label="Cell 6"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="6"
+              aria-label="Cell 7"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="7"
+              aria-label="Cell 8"
+              type="button"
+            ></button>
+            <button
+              class="cell"
+              data-index="8"
+              aria-label="Cell 9"
+              type="button"
+            ></button>
+          </div>
+        </section>
+
+        <aside class="side-panel">
+          <div class="info-card">
+            <h3>Turn Feedback</h3>
+            <div id="feedback" class="feedback">
+              Start a round and try to control the center early.
+            </div>
+          </div>
+
+          <div class="info-card">
+            <h3>Quick Strategy</h3>
+            <ul>
+              <li>Take the center when possible.</li>
+              <li>Watch for forks, not just immediate wins.</li>
+              <li>Block threats before building your own line.</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <h3>Round History</h3>
+            <ul id="history-list" class="history-list">
+              <li>No rounds played yet.</li>
+            </ul>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 BrainArcade • Play smarter. Think faster. • Sina Bolouri</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

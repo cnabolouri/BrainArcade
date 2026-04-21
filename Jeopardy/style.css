@@ -21,32 +21,6 @@
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  color: var(--text);
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    Arial,
-    sans-serif;
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(79, 70, 229, 0.28),
-      transparent 25%
-    ),
-    radial-gradient(
-      circle at bottom right,
-      rgba(37, 99, 235, 0.22),
-      transparent 30%
-    ),
-    linear-gradient(160deg, var(--bg), var(--bg-2));
-  min-height: 100vh;
-}
-
 .site-header,
 .app-shell,
 .site-footer {
@@ -54,18 +28,10 @@ body {
   margin-inline: auto;
 }
 
-.site-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  padding: 24px 0 18px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+@media (max-width: 640px) {
+  .site-logo {
+    height: 52px;
+  }
 }
 
 .brand-mark {
@@ -133,49 +99,12 @@ body {
   filter: brightness(1.06);
 }
 
-.topbar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: var(--shadow);
-}
-
-.stat-label {
-  display: block;
-  color: var(--muted);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 8px;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 900;
-}
-
 .tab-panel {
   display: none;
 }
 
 .tab-panel.active {
   display: block;
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  gap: 16px;
-  margin-bottom: 18px;
 }
 
 .panel-header h2 {
@@ -185,12 +114,6 @@ body {
 .panel-header p {
   margin: 0;
   color: var(--muted);
-}
-
-.panel-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .game-layout {
@@ -349,24 +272,6 @@ td {
   margin-top: 12px;
 }
 
-.feedback {
-  min-height: 28px;
-  margin-top: 12px;
-  font-weight: 800;
-}
-
-.feedback.correct {
-  color: var(--green);
-}
-
-.feedback.wrong {
-  color: var(--danger);
-}
-
-.feedback.info {
-  color: var(--warning);
-}
-
 .learn-panel h3 {
   margin: 0 0 10px;
 }
@@ -375,12 +280,6 @@ td {
   margin: 0;
   color: var(--muted);
   line-height: 1.6;
-}
-
-.site-footer {
-  padding: 20px 0 30px;
-  color: var(--muted);
-  text-align: center;
 }
 
 #spinner {
@@ -510,13 +409,6 @@ td {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   margin-top: 12px;
-}
-
-.feedback {
-  min-height: 28px;
-  margin-top: 12px;
-  font-weight: 700;
-  line-height: 1.5;
 }
 
 .feedback.correct {

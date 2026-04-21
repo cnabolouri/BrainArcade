@@ -1,0 +1,43 @@
+.carjam-layout {
+  grid-template-columns: 1.25fr 1fr;
+}
+
+.canvas-wrap {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 12px;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #0b1220;
+  touch-action: none;
+}
+
+:root {
+  --board: #0b1220;
+  --grid: #1f2937;
+  --exit: #22c55e;
+  --car1: #93c5fd;
+  --car2: #a7f3d0;
+  --car3: #fbbf24;
+  --car4: #f472b6;
+  --car5: #c4b5fd;
+  --car6: #fca5a5;
+  --target: #ef4444;
+  --highlight: #22c55e;
+  --ghost: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 1000px) {
+  .carjam-layout {
+    grid-template-columns: 1fr;
+  }
+}

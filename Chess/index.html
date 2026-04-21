@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BrainArcade • Chess</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="../assets/brainarcade-favicon.png"
+    />
+    <link rel="stylesheet" href="../assets/css/base.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="brand">
+        <a href="../index.html" class="logo-link">
+          <img
+            src="../assets/brainarcade-logo.png"
+            alt="BrainArcade logo"
+            class="site-logo"
+          />
+        </a>
+        <div>
+          <h1>Chess</h1>
+          <p>Control space, protect your king, and think ahead.</p>
+        </div>
+      </div>
+
+      <nav class="top-nav">
+        <a href="../index.html" class="nav-link">Home</a>
+        <a href="../jeopardy/index.html" class="nav-link">Jeopardy</a>
+        <a href="../backgammon/index.html" class="nav-link">Backgammon</a>
+        <a href="../tic-tac-toe/index.html" class="nav-link">Tic-Tac-Toe</a>
+      </nav>
+    </header>
+
+    <main class="game-shell">
+      <section class="topbar">
+        <div class="stat-card">
+          <span class="stat-label">Turn</span>
+          <span class="stat-value small" id="turn-label">White</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Status</span>
+          <span class="stat-value small" id="status">White to move</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">White Captures</span>
+          <span class="stat-value small" id="white-captures">–</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Black Captures</span>
+          <span class="stat-value small" id="black-captures">–</span>
+        </div>
+      </section>
+
+      <section class="content-grid chess-layout">
+        <section class="board-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Chess Arena</h2>
+              <p>
+                Select a piece to see legal moves. Click a highlighted square to
+                move.
+              </p>
+            </div>
+
+            <div class="panel-actions">
+              <button id="flip-board" class="secondary-btn">
+                ⇄ Flip Board
+              </button>
+              <button id="undo-move" class="secondary-btn" disabled>
+                ↶ Undo
+              </button>
+              <button id="reset-game" class="primary-btn">↺ New Game</button>
+            </div>
+          </div>
+
+          <div id="feedback" class="feedback warning">
+            White starts. Open with control of the center if possible.
+          </div>
+
+          <div class="board-wrap">
+            <div
+              id="board"
+              class="chess-board"
+              aria-label="Chess board"
+              role="grid"
+            ></div>
+          </div>
+        </section>
+
+        <aside class="side-panel">
+          <div class="info-card">
+            <h3>How to Play</h3>
+            <ul>
+              <li>Click one of your pieces to highlight legal moves.</li>
+              <li>Moves that leave your king in check are blocked.</li>
+              <li>Castling and automatic queen promotion are enabled.</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <h3>Strategy Notes</h3>
+            <ul>
+              <li>Develop minor pieces early.</li>
+              <li>Castle before the center opens too much.</li>
+              <li>Try not to move the same piece repeatedly in the opening.</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <h3>Move History</h3>
+            <ol id="move-history" class="move-history">
+              <li>No moves yet.</li>
+            </ol>
+          </div>
+        </aside>
+        <div
+          id="promotion-modal"
+          class="promotion-modal hidden"
+          aria-hidden="true"
+        >
+          <div class="promotion-card">
+            <h3>Choose Promotion</h3>
+            <p>Select the piece for your pawn.</p>
+            <div class="promotion-options">
+              <button class="promotion-btn" data-piece="q">Queen</button>
+              <button class="promotion-btn" data-piece="r">Rook</button>
+              <button class="promotion-btn" data-piece="b">Bishop</button>
+              <button class="promotion-btn" data-piece="n">Knight</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© 2026 BrainArcade • Play smarter. Think faster. • Sina Bolouri</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

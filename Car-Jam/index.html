@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>BrainArcade • Backgammon</title>
+    <title>BrainArcade • Car Jam</title>
     <link
       rel="icon"
       type="image/png"
@@ -23,8 +23,8 @@
           />
         </a>
         <div>
-          <h1>Backgammon</h1>
-          <p>Roll, plan, and outmaneuver your opponent.</p>
+          <h1>Car Jam</h1>
+          <p>Slide carefully, clear the lane, and free the target car.</p>
         </div>
       </div>
 
@@ -32,66 +32,64 @@
         <a href="../index.html" class="nav-link">Home</a>
         <a href="../jeopardy/index.html" class="nav-link">Jeopardy</a>
         <a href="../2048/index.html" class="nav-link">2048</a>
-        <a href="../tetris/index.html" class="nav-link">Tetris</a>
+        <a href="../backgammon/index.html" class="nav-link">Backgammon</a>
       </nav>
     </header>
 
     <main class="game-shell">
       <section class="topbar">
         <div class="stat-card">
-          <span class="stat-label">Dice</span>
-          <span class="stat-value small" id="dice">–</span>
+          <span class="stat-label">Moves</span>
+          <span class="stat-value" id="moves">0</span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">Bar</span>
+          <span class="stat-label">Best</span>
+          <span class="stat-value" id="best">–</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Level</span>
           <span class="stat-value small"
-            >W <span id="barW">0</span> • B <span id="barB">0</span></span
+            ><span id="lvl">1</span>/<span id="lvltotal">1</span></span
           >
         </div>
         <div class="stat-card">
-          <span class="stat-label">Off</span>
-          <span class="stat-value small"
-            >W <span id="offW">0</span> • B <span id="offB">0</span></span
+          <span class="stat-label">Status</span>
+          <span class="stat-value small" id="status"
+            >Level 1 — free the red car →</span
           >
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Turn</span>
-          <span class="stat-value small" id="status">White to roll</span>
         </div>
       </section>
 
-      <section class="content-grid">
+      <section class="content-grid carjam-layout">
         <section class="board-panel">
           <div class="panel-header">
             <div>
-              <h2>Board Arena</h2>
-              <p>Select a checker, then choose a highlighted legal target.</p>
+              <h2>Puzzle Grid</h2>
+              <p>
+                Drag cars along their allowed direction until the exit lane is
+                clear.
+              </p>
             </div>
 
             <div class="panel-actions">
-              <select id="mode-select" class="select-control">
-                <option value="pvp">2 Players</option>
-                <option value="cpu">Vs CPU</option>
-              </select>
-              <button id="roll" class="primary-btn">🎲 Roll</button>
-              <button id="end" class="secondary-btn" disabled>
-                ➡ End Turn
-              </button>
+              <button id="prev" class="secondary-btn">⟨ Prev</button>
+              <button id="next" class="secondary-btn">Next ⟩</button>
+              <button id="rand" class="primary-btn">🎲 Random</button>
               <button id="undo" class="secondary-btn" disabled>↶ Undo</button>
               <button id="reset" class="secondary-btn">↺ Reset</button>
             </div>
           </div>
 
           <div id="feedback" class="feedback warning">
-            Roll the dice to begin the turn.
+            Drag the red car toward the green exit on the right side.
           </div>
 
-          <div class="board-wrap">
+          <div class="canvas-wrap">
             <canvas
               id="game"
-              width="940"
-              height="560"
-              aria-label="Backgammon board"
+              width="600"
+              height="600"
+              aria-label="Car Jam puzzle"
               role="img"
             ></canvas>
           </div>
@@ -99,29 +97,29 @@
 
         <aside class="side-panel">
           <div class="info-card">
-            <h3>How to Move</h3>
+            <h3>How to Play</h3>
             <ul>
-              <li>Roll first to generate available moves.</li>
-              <li>Click a checker or the bar to see legal targets.</li>
-              <li>Green highlights show valid move destinations.</li>
-              <li>You must use a die if a legal move exists.</li>
+              <li>Each car can only move in its own orientation.</li>
+              <li>Horizontal cars slide left/right.</li>
+              <li>Vertical cars slide up/down.</li>
+              <li>Free the red car by opening a path to the exit.</li>
             </ul>
           </div>
 
           <div class="info-card">
-            <h3>Rules Notes</h3>
-            <p>
-              Doubles give four moves. If you have checkers on the bar, you must
-              re-enter them before moving other pieces. Bearing off follows
-              standard legality checks.
-            </p>
+            <h3>Strategy Notes</h3>
+            <ul>
+              <li>Clear the blocking chain, not just the nearest car.</li>
+              <li>Use undo to test short move sequences.</li>
+              <li>Lower move counts mean cleaner solutions.</li>
+            </ul>
           </div>
 
           <div class="info-card">
             <h3>Session Notes</h3>
             <p id="session-note">
-              Focus on escaping the back checkers without exposing too many
-              blots.
+              Efficient puzzle solving usually comes from identifying the
+              deepest blocker first.
             </p>
           </div>
         </aside>

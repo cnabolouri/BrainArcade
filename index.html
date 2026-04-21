@@ -4,82 +4,118 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BrainArcade</title>
+    <link rel="icon" type="image/png" href="assets/brainarcade-favicon.png" />
+    <link rel="stylesheet" href="assets/css/base.css" />
     <link rel="stylesheet" href="hub.css" />
   </head>
   <body>
-    <header class="hero">
+    <header class="site-header">
+      <div class="brand">
+        <a href="index.html" class="logo-link">
+          <img
+            src="assets/brainarcade-logo.png"
+            alt="BrainArcade logo"
+            class="site-logo"
+          />
+        </a>
+        <div>
+          <h1>BrainArcade</h1>
+          <p class="tagline">Play smarter. Think faster.</p>
+        </div>
+      </div>
+
       <nav class="top-nav">
-        <div class="logo-wrap">
-          <div class="logo-mark">B</div>
-          <div>
-            <h1>BrainArcade</h1>
-            <p>Interactive games for thinking, reflexes, and fun.</p>
-          </div>
-        </div>
-
-        <div class="nav-links">
-          <a href="#featured">Featured</a>
-          <a href="#games">Games</a>
-          <a href="#about">About</a>
-        </div>
+        <a href="#featured" class="nav-link">Featured</a>
+        <a href="#games" class="nav-link">Games</a>
+        <a href="#about" class="nav-link">About</a>
       </nav>
+    </header>
 
-      <section class="hero-content">
+    <main class="homepage-shell">
+      <section class="hero-section">
         <div class="hero-copy">
-          <span class="eyebrow">Play • Learn • Explore</span>
-          <h2>A modern browser arcade built with JavaScript.</h2>
+          <span class="eyebrow">Interactive Browser Games</span>
+          <h2>A polished game hub built for logic, reflexes, and strategy.</h2>
           <p>
-            BrainArcade brings trivia, arcade, strategy, and puzzle games into
-            one unified experience. Start with Jeopardy, then explore the full
-            collection.
+            BrainArcade brings together fast, interactive browser games under
+            one unified design system. From trivia and puzzle-solving to arcade
+            reflexes, each game is designed to feel like part of a real
+            product—not just a demo.
           </p>
 
           <div class="hero-actions">
-            <a class="primary-link" href="./jeopardy/index.html"
-              >Play Jeopardy</a
-            >
-            <a class="secondary-link" href="#games">Browse Games</a>
+            <a href="jeopardy/index.html" class="primary-btn">Play Jeopardy</a>
+            <a href="#games" class="secondary-btn">Browse Games</a>
+          </div>
+
+          <div class="hero-badges">
+            <span class="badge">Trivia</span>
+            <span class="badge">Arcade</span>
+            <span class="badge">Puzzle</span>
+            <span class="badge">Strategy</span>
           </div>
         </div>
 
-        <div class="hero-panel">
-          <div class="mini-card">
-            <span>Featured</span>
+        <div class="hero-visual">
+          <div class="visual-card big-card">
+            <span class="card-label">Featured</span>
             <strong>Jeopardy Arena</strong>
-            <p>Trivia board, hints, score tracking, and reveal flow.</p>
+            <p>
+              API-powered trivia board with hints, reveals, and score tracking.
+            </p>
           </div>
-          <div class="mini-card">
-            <span>Next Up</span>
-            <strong>2048 / Tetris / Snake</strong>
-            <p>More games integrated into the same visual system.</p>
+
+          <div class="visual-grid">
+            <div class="visual-card mini-card">
+              <strong>2048</strong>
+              <p>Merge and build momentum.</p>
+            </div>
+            <div class="visual-card mini-card">
+              <strong>Tetris</strong>
+              <p>Stack clean and survive.</p>
+            </div>
+            <div class="visual-card mini-card">
+              <strong>Tic-Tac-Toe</strong>
+              <p>Quick rounds, clean strategy.</p>
+            </div>
+            <div class="visual-card mini-card">
+              <strong>Chess</strong>
+              <p>Strategy, tempo, and king safety.</p>
+            </div>
           </div>
         </div>
       </section>
-    </header>
 
-    <main>
       <section id="featured" class="section-block">
         <div class="section-heading">
-          <h3>Featured Game</h3>
-          <p>The current flagship experience of BrainArcade.</p>
+          <h3>Featured Experience</h3>
+          <p>The flagship game currently leading the platform.</p>
         </div>
 
-        <article class="featured-game-card">
+        <article class="featured-card">
           <div class="featured-copy">
-            <span class="badge">Trivia & Learning</span>
+            <span class="badge badge-highlight">Flagship Game</span>
             <h4>Jeopardy Arena</h4>
             <p>
-              A category-based trivia game powered by live API data with score,
-              streaks, hints, reveal flow, and a cleaner learning experience.
+              A modernized Jeopardy-style experience with live category data,
+              answer checking, hints, streak tracking, and a cleaner
+              learning-focused flow.
             </p>
-            <a class="primary-link" href="./jeopardy/index.html"
-              >Open Jeopardy</a
-            >
+
+            <ul class="feature-list">
+              <li>Live trivia board powered by API data</li>
+              <li>Hints, reveals, and answer checking</li>
+              <li>Practice and Learn tabs for deeper engagement</li>
+              <li>Built as part of the BrainArcade ecosystem</li>
+            </ul>
+
+            <a href="jeopardy/index.html" class="primary-btn">Open Jeopardy</a>
           </div>
-          <div class="featured-visual">
-            <div class="glow-card">$200</div>
-            <div class="glow-card">$400</div>
-            <div class="glow-card">$600</div>
+
+          <div class="featured-preview">
+            <div class="preview-tile">$200</div>
+            <div class="preview-tile">$400</div>
+            <div class="preview-tile">$600</div>
           </div>
         </article>
       </section>
@@ -87,49 +123,99 @@
       <section id="games" class="section-block">
         <div class="section-heading">
           <h3>Game Library</h3>
-          <p>One place for all your browser games.</p>
+          <p>Choose your next challenge.</p>
+        </div>
+
+        <div class="category-row">
+          <span class="category-chip active">All</span>
+          <span class="category-chip">Trivia</span>
+          <span class="category-chip">Arcade</span>
+          <span class="category-chip">Puzzle</span>
+          <span class="category-chip">Strategy</span>
         </div>
 
         <div class="game-grid">
-          <a class="game-card featured" href="./jeopardy/index.html">
-            <span class="game-tag">Featured</span>
+          <a href="jeopardy/index.html" class="game-card featured-game">
+            <div class="card-badges">
+              <span class="game-type">Trivia</span>
+              <span class="difficulty medium">Medium</span>
+            </div>
             <h4>Jeopardy</h4>
-            <p>Interactive trivia board with modern UI.</p>
+            <p>
+              Category-based quiz board with hints, reveals, and score tracking.
+            </p>
           </a>
 
-          <a class="game-card" href="./backgammon/index.html">
-            <h4>Backgammon</h4>
-            <p>Classic board strategy in the browser.</p>
-          </a>
-
-          <a class="game-card" href="./2048/index.html">
+          <a href="2048/index.html" class="game-card">
+            <div class="card-badges">
+              <span class="game-type">Puzzle</span>
+              <span class="difficulty medium">Medium</span>
+            </div>
             <h4>2048</h4>
-            <p>Slide, merge, and chase higher numbers.</p>
+            <p>Merge matching tiles, build momentum, and push toward 2048.</p>
           </a>
 
-          <a class="game-card" href="./snake/index.html">
-            <h4>Snake</h4>
-            <p>Simple mechanics, fast reflexes.</p>
-          </a>
-
-          <a class="game-card" href="./tetris/index.html">
+          <a href="tetris/index.html" class="game-card">
+            <div class="card-badges">
+              <span class="game-type">Arcade</span>
+              <span class="difficulty hard">Hard</span>
+            </div>
             <h4>Tetris</h4>
-            <p>Stack shapes and clear lines efficiently.</p>
+            <p>Clear lines, manage pressure, and stack with precision.</p>
           </a>
 
-          <a class="game-card" href="./tic-tac-toe/index.html">
+          <a href="tic-tac-toe/index.html" class="game-card">
+            <div class="card-badges">
+              <span class="game-type">Strategy</span>
+              <span class="difficulty easy">Easy</span>
+            </div>
             <h4>Tic-Tac-Toe</h4>
-            <p>Quick logic game with clean UX.</p>
+            <p>Classic fast-play board game with PvP and CPU mode.</p>
           </a>
 
-          <a class="game-card" href="./t-rex/index.html">
-            <h4>T-Rex</h4>
-            <p>Reaction-based runner experience.</p>
+          <a href="snake/index.html" class="game-card">
+            <div class="card-badges">
+              <span class="game-type">Arcade</span>
+              <span class="difficulty medium">Medium</span>
+            </div>
+            <h4>Snake</h4>
+            <p>Fast reflexes, clean movement, and score-chasing gameplay.</p>
           </a>
 
-          <a class="game-card" href="./car-jam/index.html">
-            <h4>Car-Jam</h4>
-            <p>Puzzle-style movement and planning.</p>
+          <a href="backgammon/index.html" class="game-card">
+            <div class="card-badges">
+              <span class="game-type">Strategy</span>
+              <span class="difficulty hard">Hard</span>
+            </div>
+            <h4>Backgammon</h4>
+            <p>Board strategy, race timing, and probability-based decisions.</p>
+          </a>
+
+          <a href="t-rex/index.html" class="game-card">
+            <div class="card-badges">
+              <span class="game-type">Arcade</span>
+              <span class="difficulty medium">Medium</span>
+            </div>
+            <h4>T-Rex Runner</h4>
+            <p>Jump cacti, duck birds, and survive the increasing pace.</p>
+          </a>
+
+          <a href="car-jam/index.html" class="game-card">
+            <div class="card-badges">
+              <span class="game-type">Puzzle</span>
+              <span class="difficulty hard">Hard</span>
+            </div>
+            <h4>Car Jam</h4>
+            <p>Slide blockers carefully and clear a path to the exit.</p>
+          </a>
+
+          <a href="chess/index.html" class="game-card featured-game">
+            <div class="card-badges">
+              <span class="game-type">Strategy</span>
+              <span class="difficulty hard">Hard</span>
+            </div>
+            <h4>Chess</h4>
+            <p>Control space, protect your king, and build long-term plans.</p>
           </a>
         </div>
       </section>
@@ -140,19 +226,38 @@
           <p>A growing front-end game platform.</p>
         </div>
 
-        <div class="about-card">
-          <p>
-            BrainArcade is designed as a unified game hub where different kinds
-            of browser games can live together under one visual identity. The
-            goal is to make the project feel like a product, not a disconnected
-            set of exercises.
-          </p>
+        <div class="about-grid">
+          <article class="about-card">
+            <h4>Why it exists</h4>
+            <p>
+              BrainArcade is designed to present browser games as a unified
+              product, not as disconnected coding exercises. The focus is on
+              interaction, consistency, and memorable UX.
+            </p>
+          </article>
+
+          <article class="about-card">
+            <h4>Design philosophy</h4>
+            <p>
+              The project uses a shared design system, game-specific polish, and
+              consistent branding so each experience feels related while keeping
+              its own personality.
+            </p>
+          </article>
+
+          <article class="about-card">
+            <h4>What’s next</h4>
+            <p>
+              Future versions can add leaderboards, themes, animations,
+              AI-powered explanations, and more learning-oriented game modes.
+            </p>
+          </article>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <p>BrainArcade • Built with HTML, CSS, and JavaScript.</p>
+      <p>© 2026 BrainArcade • Play smarter. Think faster. • Sina Bolouri</p>
     </footer>
   </body>
 </html>
